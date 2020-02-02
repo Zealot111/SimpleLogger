@@ -37,7 +37,7 @@ namespace s_logger {
         FATAL = 6
     };
 
-    void create_logger(const std::string& name = "default", const bool echo_cout = true, const std::string& filename = "", int min_log_level = 0, const std::string& msg_string = "%datetime %thread [%file:%line:%func] %level");
+    void create_logger(const std::string& name = "default", const bool echo_cout = true, const std::string& filename = "", int min_log_level = 0, const std::string& msg_string = " %datetime %thread %level [%file:%line:%func]");
     void remove_logger(const std::string& name);
 
     extern std::mutex write_log_mutex;

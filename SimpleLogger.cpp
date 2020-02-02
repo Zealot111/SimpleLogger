@@ -15,7 +15,7 @@ namespace s_logger {
     class logger;
 
     const char* log_levels[] = {
-        "NONE","TRACE","DEBUG","INFO","WARN","ERROR","FATAL"
+        "NONE ","TRACE","DEBUG","INFO","WARN ","ERROR","FATAL"
     };
 
     inline const char* getLevelText(int level) {
@@ -177,7 +177,7 @@ namespace s_logger {
         strutils::replace(to_str, "%file", s_file.substr(s_file.find_last_of("\\/")+1, s_file.length()).c_str());
         strutils::replace(to_str, "%line", std::to_string(line).c_str());
         strutils::replace(to_str, "%func", func);
-        ostringstream oss; oss << std::this_thread::get_id();
+        ostringstream oss; oss << std::setw(5) << std::this_thread::get_id();
         strutils::replace(to_str, "%thread", oss.str().c_str());
         strutils::replace(to_str, "%level", getLevelText(level));
         return to_str;
