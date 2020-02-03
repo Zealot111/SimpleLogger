@@ -31,9 +31,13 @@ namespace s_logger {
         logstream.close();
     }
 
-    void create_logger(const std::string& name, const bool echo_cout, const std::string& filename, int min_log_level, const std::string& msg_string) {
+    logger& create_logger(const std::string& name, const bool echo_cout, const std::string& filename, int min_log_level, const std::string& msg_string) {
         std::lock_guard<std::mutex> lock(write_log_mutex);
+        if (loggers.find(name) != loggers.end()) {
+            loggers.erase(name);
+        }
         loggers.emplace(name, make_unique<logger>(echo_cout, filename, min_log_level, msg_string));
+        return *loggers[name].get();
     }
 
     void remove_logger(const std::string& name) {
@@ -61,7 +65,7 @@ namespace s_logger {
         }
     }
 
-    void logger::flush_str_to_log(int log_level, const char* file, const char* func, int line) {
+    void logger::flush_str_to_log(int log_level, const char* file, const char* func, int line, bool force) {
         string tstr(msg_string); tstr.reserve(256);
         flush_each_count = (flush_each_count + 1) % flush_each_n;
         
@@ -76,7 +80,7 @@ namespace s_logger {
                 std::cerr << tstr << s << std::endl;
             }
         }
-        if (log_level >= WARNING || !flush_each_count) {
+        if (log_level >= WARNING || !flush_each_count || force) {
             logstream.flush();
         }
         str.str(std::string());
@@ -84,7 +88,7 @@ namespace s_logger {
     }
 
     log_writer::log_writer(const char* logname, int log_level, const char* file, const char* func, int line) :
-        _logname(logname), _log_level(log_level), _file(file), _func(func), _line(line), _l(*loggers[logname].get())
+        _logname(logname), _log_level(log_level), _file(file), _func(func), _line(line), _l( (loggers.find(logname) != loggers.end()) ? *loggers[logname].get(): create_logger(logname))
     {
         _allowed_to_write = log_level >= _l.min_log_level;
     }
@@ -92,7 +96,6 @@ namespace s_logger {
     log_writer::~log_writer() {
         if (!_allowed_to_write) return;
         std::lock_guard<std::mutex> lock(write_log_mutex);
-        // call appropriate method of log
         _l.flush_str_to_log(_log_level, _file, _func, _line);
     }
 
@@ -102,6 +105,7 @@ namespace s_logger {
         std::lock_guard<std::mutex> lock(write_log_mutex);
         t(_l.str);
         if (t == static_cast<std::ostream & (*)(std::ostream&)>(std::flush) || t == static_cast<std::ostream & (*)(std::ostream&)>(std::endl)) {
+            _l.flush_str_to_log(_log_level, _file, _func, _line, true);
         }
         return *this;
     }
@@ -189,7 +193,7 @@ namespace s_logger {
         }
 
         std::string& replace(std::string& str, const char* from, const char *to) {
-            size_t p;
+            size_t p = std::string::npos;
             size_t from_length = strlen(from);
             while ((p = str.find(from)) != std::string::npos) {
                 str.replace(p, from_length, to);
